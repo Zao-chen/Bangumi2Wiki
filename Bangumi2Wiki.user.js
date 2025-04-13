@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         快速跳转萌娘百科
 // @namespace    https://github.com/Zao-chen/Bangumi2Wiki
-// @version      1.2
-// @description  在 Bangumi 条目 infobox 顶部添加“萌娘百科”按钮，支持长按设置跳转前缀
+// @version      1.3.0
+// @description  在 Bangumi 条目 infobox 顶部添加“萌娘百科”按钮，支持长按设置跳转前缀，兼容移动设备
 // @match        https://bangumi.tv/subject/*
 // @match        https://bgm.tv/subject/*
 // @match        https://chii.in/subject/*
 // @grant        none
-// @license MIT
+// @license      MIT
 // ==/UserScript==
 
 (function () {
@@ -45,27 +45,44 @@
         styleButton(button);
 
         let pressTimer = null;
+        let longPressTriggered = false;
 
-        button.addEventListener("mousedown", () => {
+        function startPressTimer() {
+            longPressTriggered = false;
             pressTimer = setTimeout(() => {
-                const newUrl = prompt("请输入新的萌百前缀地址（以 / 结尾）", baseUrl);
+                longPressTriggered = true;
+                const newUrl = prompt("请输入新的萌百前缀地址（以 / 结尾）", localStorage.getItem(LOCAL_KEY) || DEFAULT_URL);
                 if (newUrl && newUrl.startsWith('http') && newUrl.endsWith('/')) {
                     localStorage.setItem(LOCAL_KEY, newUrl);
-                    alert("已保存新前缀，刷新页面以生效！");
+                    alert("✅ 已保存新前缀，刷新页面以生效！");
                 } else if (newUrl) {
-                    alert("地址格式无效，请确保以 http 开头并以 / 结尾。");
+                    alert("⚠️ 地址格式无效，请确保以 http 开头并以 / 结尾。");
                 }
-            }, 800); // 长按时长
-        });
+            }, 800); // 长按时长（ms）
+        }
 
-        button.addEventListener("mouseup", () => clearTimeout(pressTimer));
-        button.addEventListener("mouseleave", () => clearTimeout(pressTimer));
-        button.addEventListener("click", () => {
-            // 只有没有触发长按时才跳转
-            if (pressTimer) {
-                const url = `${localStorage.getItem(LOCAL_KEY) || DEFAULT_URL}index.php?search=${encodeURIComponent(chineseTitle)}`;
-                window.open(url, "_blank");
+        function cancelPressTimer() {
+            clearTimeout(pressTimer);
+        }
+
+        // 桌面端
+        button.addEventListener("mousedown", startPressTimer);
+        button.addEventListener("mouseup", cancelPressTimer);
+        button.addEventListener("mouseleave", cancelPressTimer);
+
+        // 移动端
+        button.addEventListener("touchstart", startPressTimer);
+        button.addEventListener("touchend", cancelPressTimer);
+        button.addEventListener("touchcancel", cancelPressTimer);
+
+        // 点击跳转（如果不是长按）
+        button.addEventListener("click", (e) => {
+            if (longPressTriggered) {
+                e.preventDefault(); // 阻止长按后继续跳转
+                return;
             }
+            const url = `${localStorage.getItem(LOCAL_KEY) || DEFAULT_URL}index.php?search=${encodeURIComponent(chineseTitle)}`;
+            window.open(url, "_blank");
         });
 
         const wrapper = document.createElement("li");
