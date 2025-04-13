@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         快速跳转萌百跳转
+// @description  在条目中添加”萌娘百科”的按钮，点击即可跳转同名的萌娘百科页面！
 // @namespace    https://github.com/Zao-chen/Bangumi2Wiki
 // @version      0.7
 // @description  在 Bangumi 条目页面 infobox 顶部添加“萌娘百科”按钮，点击跳转至对应页面
 // @match        https://bangumi.tv/subject/*
 // @match        https://bgm.tv/subject/*
 // @match        https://chii.in/subject/*
-// @grant        none
+// @license      MIT
 // ==/UserScript==
 
 (function () {
