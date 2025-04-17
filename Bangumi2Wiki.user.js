@@ -1,15 +1,19 @@
 // ==UserScript==
 // @name         快速跳转萌娘百科
 // @namespace    https://github.com/Zao-chen/Bangumi2Wiki
-// @version      1.4.0
-// @description  在 Bangumi 条目 infobox 顶部添加“萌娘百科”按钮，支持长按设置跳转链接模板（支持占位符）
+// @version      2.0.2
+// @description  在tab栏中添加跳转萌娘百科按钮。支持条目、人物与角色页面。可以自定义链接。
 // @match        https://bangumi.tv/subject/*
+// @match        https://bangumi.tv/person/*
+// @match        https://bangumi.tv/character/*
 // @match        https://bgm.tv/subject/*
+// @match        https://bgm.tv/person/*
+// @match        https://bgm.tv/character/*
 // @match        https://chii.in/subject/*
+// @match        https://chii.in/person/*
+// @match        https://chii.in/character/*
 // @grant        none
 // @license      MIT
-// @downloadURL  https://update.greasyfork.org/scripts/532719/快速跳转萌娘百科.user.js
-// @updateURL    https://update.greasyfork.org/scripts/532719/快速跳转萌娘百科.meta.js
 // ==/UserScript==
 
 (function () {
@@ -17,38 +21,63 @@
 
     const LOCAL_KEY = 'moegirl_link_template';
     const DEFAULT_TEMPLATE = 'https://zh.moegirl.org.cn/index.php?search={title}';
-    const urlTemplate = localStorage.getItem(LOCAL_KEY) || DEFAULT_TEMPLATE;
 
-    // 查找 infobox 内 span.tip 的 li 里中文名
-    const tips = document.querySelectorAll('#infobox li span.tip');
-    let chineseTitle = null;
+    const titleLink = document.querySelector('h1.nameSingle a');
 
-    for (const tip of tips) {
-        if (tip.textContent.trim().startsWith("中文名")) {
-            const li = tip.closest('li');
-            if (li) {
-                chineseTitle = li.textContent.replace(/^中文名:\s*/, '').trim();
-                break;
+    const isSubjectPage = location.pathname.includes('/subject/');
+    const isPersonPage = location.pathname.includes('/person/');
+    const isCharacterPage = location.pathname.includes('/character/');
+    let displayTitle = null;
+
+    if (isSubjectPage || isPersonPage || isCharacterPage) {
+        const tips = document.querySelectorAll('#infobox li span.tip');
+        for (const tip of tips) {
+            const text = tip.textContent.trim();
+            if (isSubjectPage && text.startsWith("中文名")) {
+                const li = tip.closest('li');
+                if (li) {
+                    displayTitle = li.textContent.replace(/^中文名[:：]\s*/, '').trim();
+                    break;
+                }
+            }
+            if (isPersonPage && text.startsWith("简体中文名")) {
+                const li = tip.closest('li');
+                if (li) {
+                    displayTitle = li.textContent.replace(/^简体中文名[:：]\s*/, '').trim();
+                    break;
+                }
+            }
+            if (isCharacterPage && text.startsWith("简体中文名")) {
+                const li = tip.closest('li');
+                if (li) {
+                    displayTitle = li.textContent.replace(/^简体中文名[:：]\s*/, '').trim();
+                    break;
+                }
             }
         }
     }
 
-    if (!chineseTitle) return;
+    // fallback：使用主标题本身
+    if (!displayTitle) {
+        displayTitle = titleLink.textContent.trim();
+    }
 
-    chineseTitle = chineseTitle.replace(/第.*季/g, '').trim();
+    // 去除季数，例如“xxx 第1季”
+    displayTitle = displayTitle.replace(/第.*季/g, '').trim();
 
-    const infobox = document.querySelector('#infobox');
-    const firstLi = infobox?.querySelector('li');
-
-    if (infobox && firstLi) {
-        const button = document.createElement("button");
-        button.textContent = "萌娘百科";
-        styleButton(button);
+    const navTabs = document.querySelector('.navTabs.clearit') || document.querySelector('.navTabs');
+    if (navTabs) {
+        const secondTab = navTabs.children[1] || navTabs.firstElementChild;  // 默认插入第二个 <li> 标签（如果存在）
+        const newTab = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = 'javascript:void(0)';
+        link.textContent = "萌百";
+        link.setAttribute('title', `点击跳转到“${displayTitle}”萌娘百科，长按可设置跳转模板`);  // 设置动态提示文本
 
         let pressTimer = null;
         let longPressTriggered = false;
 
-        function startPressTimer() {
+        function startPressTimer(e) {
             longPressTriggered = false;
             pressTimer = setTimeout(() => {
                 longPressTriggered = true;
@@ -60,50 +89,32 @@
                 } else if (newTemplate) {
                     alert("⚠️ 模板格式无效，必须包含 {title} 作为占位符！");
                 }
-            }, 800);
+            }, 700);
         }
 
         function cancelPressTimer() {
             clearTimeout(pressTimer);
         }
 
-        button.addEventListener("mousedown", startPressTimer);
-        button.addEventListener("mouseup", cancelPressTimer);
-        button.addEventListener("mouseleave", cancelPressTimer);
-        button.addEventListener("touchstart", startPressTimer);
-        button.addEventListener("touchend", cancelPressTimer);
-        button.addEventListener("touchcancel", cancelPressTimer);
+        link.addEventListener("mousedown", startPressTimer);
+        link.addEventListener("mouseup", cancelPressTimer);
+        link.addEventListener("mouseleave", cancelPressTimer);
+        link.addEventListener("touchstart", startPressTimer);
+        link.addEventListener("touchend", cancelPressTimer);
+        link.addEventListener("touchcancel", cancelPressTimer);
 
-        button.addEventListener("click", (e) => {
+        link.addEventListener("click", (e) => {
             if (longPressTriggered) {
                 e.preventDefault();
                 return;
             }
             const template = localStorage.getItem(LOCAL_KEY) || DEFAULT_TEMPLATE;
-            const finalUrl = template.replace(/{title}/g, encodeURIComponent(chineseTitle));
+            const finalUrl = template.replace(/{title}/g, encodeURIComponent(displayTitle));
             window.open(finalUrl, "_blank");
         });
 
-        const wrapper = document.createElement("li");
-        wrapper.appendChild(button);
-        infobox.insertBefore(wrapper, firstLi);
+        newTab.appendChild(link);
+        navTabs.insertBefore(newTab, secondTab);  // 插入到第二个位置，或者默认插入到第一个元素前
     }
 
-    function styleButton(btn) {
-        btn.style.padding = "6px 12px";
-        btn.style.backgroundColor = "#ff69b4";
-        btn.style.color = "#fff";
-        btn.style.border = "none";
-        btn.style.borderRadius = "6px";
-        btn.style.fontSize = "13px";
-        btn.style.boxShadow = "0 1px 4px rgba(0,0,0,0.2)";
-        btn.style.cursor = "pointer";
-        btn.style.userSelect = "none";
-        btn.addEventListener("mouseover", () => {
-            btn.style.backgroundColor = "#ff85c1";
-        });
-        btn.addEventListener("mouseout", () => {
-            btn.style.backgroundColor = "#ff69b4";
-        });
-    }
 })();
