@@ -5,6 +5,7 @@
 // @description  在萌娘百科页面导航栏添加班固米(Bangumi)搜索按钮
 // @match        https://zh.moegirl.org.cn/*
 // @grant        GM_addStyle
+// @license      MIT
 // ==/UserScript==
 
 (function() {
