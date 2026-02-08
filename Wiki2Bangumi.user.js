@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         萌娘百科添加班固米搜索按钮
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/Zao-chen/Bangumi2Wiki
 // @version      1.1
 // @description  在萌娘百科页面导航栏添加班固米(Bangumi)搜索按钮
 // @match        https://zh.moegirl.org.cn/*
